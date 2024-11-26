@@ -173,7 +173,7 @@
     <input type="text" id="number" required><br>
     
     <label for="details">Details (Comma-separated):</label>
-    <input type="text" id="details" value="Callback, Renewal, @04-PM" required><br>
+    <input type="text" id="details" required><br>
     
     <button type="submit">Add Contact</button>
   </form>
@@ -350,6 +350,8 @@
     };
 
     reader.readAsText(file);
+     fileInput.value = '';
+     alert("File uploaded successfully.");
   };
 
   // Helper function to parse CSV data
