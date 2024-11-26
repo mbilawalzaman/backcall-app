@@ -111,9 +111,23 @@
       padding: 5px;
     }
 
-    .delete-icon:hover {
-      color: #d32f2f;
-    }
+     .delete-icon:hover {
+    color: #d32f2f;
+    cursor: pointer; /* Ensures cursor is a pointer */
+  }
+   .edit-icon {
+    color: #4CAF50;
+    cursor: pointer;
+    font-size: 20px;
+    text-align: center;
+    padding: 5px;
+  }
+
+  .edit-icon:hover {
+    color: #388E3C;
+    cursor: pointer; /* Ensures cursor is a pointer */
+  }
+
 
     /* Buttons Styling */
     .action-buttons {
@@ -189,150 +203,168 @@
     <button id="uploadCsvButton">Upload CSV</button>
   </div>
 
-  <script>
-    // Load contacts from localStorage or initialize an empty array
-    const storedContacts = localStorage.getItem('contacts');
-    const contacts = storedContacts ? JSON.parse(storedContacts) : [];
+ <script>
+  // Load contacts from localStorage or initialize an empty array
+  const storedContacts = localStorage.getItem('contacts');
+  const contacts = storedContacts ? JSON.parse(storedContacts) : [];
 
-    // Function to render the table
-    const tableBody = document.getElementById('contactsTableBody');
-    const renderTable = () => {
-      tableBody.innerHTML = contacts.map((contact, index) => {
-        const details = contact.details.join(", ");
-        return `
-          <tr>
-            <td>${contact.name}</td>
-            <td>${contact.number}</td>
-            <td>${details}</td>
-            <td><span class="delete-icon" data-index="${index}">&#10006;</span></td>
-          </tr>
-        `;
-      }).join('');
-    };
+  // Function to render the table
+  const tableBody = document.getElementById('contactsTableBody');
+  const renderTable = () => {
+    tableBody.innerHTML = contacts.map((contact, index) => {
+      const details = contact.details.join(", ");
+      return `
+        <tr data-index="${index}">
+          <td>${contact.name}</td>
+          <td>${contact.number}</td>
+          <td>${details}</td>
+          <td><span class="delete-icon" data-index="${index}">&#10006;</span> | <span class="edit-icon" data-index="${index}">&#9998;</span></td>
+        </tr>
+      `;
+    }).join('');
+  };
 
-    // Initial render of the table
-    renderTable();
+  // Initial render of the table
+  renderTable();
 
-    // Handle form submission to add a new contact
-    const contactForm = document.getElementById('contactForm');
-    contactForm.addEventListener('submit', function(event) {
-      event.preventDefault();
+  // Handle form submission to add a new contact or edit an existing one
+  const contactForm = document.getElementById('contactForm');
+  let editIndex = -1; // To track the index of the contact being edited
 
-      // Get form values
-      const name = document.getElementById('name').value;
-      const number = document.getElementById('number').value;
-      const details = document.getElementById('details').value.split(',').map(item => item.trim());
+  contactForm.addEventListener('submit', function(event) {
+    event.preventDefault();
 
-      // Create new contact object and add to the contacts array
+    // Get form values
+    const name = document.getElementById('name').value;
+    const number = document.getElementById('number').value;
+    const details = document.getElementById('details').value.split(',').map(item => item.trim());
+
+    if (editIndex === -1) {
+      // Add new contact
       const newContact = { name, number, details };
       contacts.push(newContact);
+    } else {
+      // Update existing contact
+      contacts[editIndex].name = name;
+      contacts[editIndex].number = number;
+      contacts[editIndex].details = details;
 
-      // Save updated contacts to local storage
+      // Show success alert for update
+      alert("Number updated successfully");
+
+      // Reset edit mode
+      editIndex = -1;
+    }
+
+    // Save updated contacts to local storage
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+
+    // Re-render the table with updated data
+    renderTable();
+
+    // Reset form
+    contactForm.reset();
+    contactForm.querySelector('button').textContent = 'Add Contact'; // Reset the button to "Add Contact"
+  });
+
+  // Function to delete a contact
+  const deleteContact = (index) => {
+    contacts.splice(index, 1); // Remove the contact from the array
+    localStorage.setItem('contacts', JSON.stringify(contacts)); // Update localStorage
+    renderTable(); // Re-render the table after deletion
+  };
+
+  // Function to handle edit contact
+  const editContact = (index) => {
+    const contact = contacts[index];
+
+    // Populate the form with the contact's data
+    document.getElementById('name').value = contact.name;
+    document.getElementById('number').value = contact.number;
+    document.getElementById('details').value = contact.details.join(', ');
+
+    // Change the button text to "Update Contact" and store the edit index
+    contactForm.querySelector('button').textContent = 'Update Contact';
+    editIndex = index;
+  };
+
+  // Event listener for delete icons
+  tableBody.addEventListener('click', (event) => {
+    if (event.target.classList.contains('delete-icon')) {
+      const index = event.target.getAttribute('data-index');
+      deleteContact(index);
+    } else if (event.target.classList.contains('edit-icon')) {
+      const index = event.target.getAttribute('data-index');
+      editContact(index);
+    }
+  });
+
+  // Function to download table data as CSV
+  const downloadCSV = () => {
+    const headers = ['Name', 'Number', 'Callback Details'];
+    const rows = contacts.map(contact => [
+      contact.name,
+      contact.number,
+      contact.details.join(', ')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'contacts.csv';
+    link.click();
+  };
+
+  // Event listener for downloading CSV
+  document.getElementById('downloadCsv').addEventListener('click', downloadCSV);
+
+  // Handle CSV upload
+  const uploadCSV = () => {
+    const fileInput = document.getElementById('uploadCsv');
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert("Please select a CSV file to upload.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const csvData = event.target.result;
+      const parsedData = parseCSV(csvData);
+
+      // Replace current contacts with the parsed data from CSV
+      contacts.length = 0; // Clear existing contacts
+      contacts.push(...parsedData); // Add parsed contacts to the array
+
+      // Save the updated contacts to localStorage
       localStorage.setItem('contacts', JSON.stringify(contacts));
 
-      // Re-render the table with the new contact
+      // Re-render the table with the uploaded contacts
       renderTable();
+    };
 
-      // Clear the form fields
-      contactForm.reset();
+    reader.readAsText(file);
+  };
+
+  // Helper function to parse CSV data
+  const parseCSV = (csvData) => {
+    const rows = csvData.split('\n').map(row => row.trim()).filter(row => row.length > 0);
+    return rows.slice(1).map(row => {
+      const [name, number, ...details] = row.split(',').map(cell => cell.trim());
+      return { name, number, details };
     });
+  };
 
-    // Function to delete a contact
-    const deleteContact = (index) => {
-      contacts.splice(index, 1); // Remove the contact from the array
-      localStorage.setItem('contacts', JSON.stringify(contacts)); // Update localStorage
-      renderTable(); // Re-render the table after deletion
-    };
-
-    // Event listener for delete icons
-    tableBody.addEventListener('click', (event) => {
-      if (event.target.classList.contains('delete-icon')) {
-        const index = event.target.getAttribute('data-index');
-        deleteContact(index);
-      }
-    });
-
-    // Function to download table data as CSV
-    const downloadCSV = () => {
-      // Prepare CSV headers and rows
-      const headers = ['Name', 'Number', 'Callback Details'];
-      const rows = contacts.map(contact => [
-        contact.name,
-        contact.number,
-        contact.details.join(', ')
-      ]);
-
-      // Combine headers and rows into CSV content
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-      ].join('\n');
-
-      // Create a Blob from CSV content
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-
-      // Create an invisible link to download the CSV file
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'contacts.csv';
-
-      // Trigger the download by simulating a click on the link
-      link.click();
-    };
-
-    // Add event listener to the "Download CSV" button
-    const downloadCsvButton = document.getElementById('downloadCsv');
-    downloadCsvButton.addEventListener('click', downloadCSV);
-
-    // Function to upload and parse CSV
-    const uploadCSV = () => {
-      const fileInput = document.getElementById('uploadCsv');
-      const file = fileInput.files[0];
-
-      if (!file) {
-        alert("Please select a CSV file to upload.");
-        return;
-      }
-
-      const reader = new FileReader();
-      
-      // Read the file and parse its content
-      reader.onload = function(event) {
-        const csvData = event.target.result;
-        const parsedData = parseCSV(csvData);
-
-        // Update contacts with the parsed data
-        contacts.length = 0; // Clear existing contacts
-        contacts.push(...parsedData); // Add the parsed data
-
-        // Save the updated contacts to local storage
-        localStorage.setItem('contacts', JSON.stringify(contacts));
-
-        // Re-render the table with the uploaded contacts
-        renderTable();
-      };
-
-      reader.readAsText(file);
-    };
-
-    // Function to parse CSV data
-    const parseCSV = (csvData) => {
-      const rows = csvData.split('\n').map(row => row.trim()).filter(row => row.length > 0);
-      const parsedContacts = rows.slice(1).map(row => {
-        const [name, number, ...details] = row.split(',').map(cell => cell.trim());
-        return {
-          name,
-          number,
-          details };
-      });
-      return parsedContacts;
-    };
-
-    // Add event listener to the "Upload CSV" button
-    const uploadCsvButton = document.getElementById('uploadCsvButton');
-    uploadCsvButton.addEventListener('click', uploadCSV);
-
-  </script>
+  // Add event listener to the "Upload CSV" button
+  const uploadCsvButton = document.getElementById('uploadCsvButton');
+  uploadCsvButton.addEventListener('click', uploadCSV);
+</script>
 
 </body>
 </html>
