@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contacts Table</title>
+  <style>
+    /* Reset basic styling */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    h3 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #4CAF50;
+    }
+
+    /* Form Styling */
+    #contactForm {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    /* Table Styling */
+    table {
+      width: 100%;
+      max-width: 800px;
+      margin-top: 20px;
+      border-collapse: collapse;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    /* Buttons Styling */
+    .action-buttons {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .action-buttons button, .action-buttons input {
+      padding: 12px 20px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    .action-buttons button {
+      background-color: #007BFF;
+      color: white;
+      cursor: pointer;
+    }
+
+    .action-buttons button:hover {
+      background-color: #0056b3;
+    }
+
+    .action-buttons input[type="file"] {
+      border: none;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Form for adding new contact -->
+  <h3>Add New Contact</h3>
+  <form id="contactForm">
+    <label for="name">Name:</label>
+    <input type="text" id="name" required><br>
+    
+    <label for="number">Number:</label>
+    <input type="text" id="number" required><br>
+    
+    <label for="details">Details (Comma-separated):</label>
+    <input type="text" id="details" value="Callback, Renewal, @04-PM" required><br>
+    
+    <button type="submit">Add Contact</button>
+  </form>
+
+  <hr>
+
+  <!-- Contacts Table -->
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Number</th>
+        <th>Callback Details</th>
+      </tr>
+    </thead>
+    <tbody id="contactsTableBody">
+    </tbody>
+  </table>
+
+  <div class="action-buttons">
+    <!-- Download CSV Button -->
+    <button id="downloadCsv">Download CSV</button>
+    
+    <!-- Upload CSV Button -->
+    <input type="file" id="uploadCsv" accept=".csv">
+    <button id="uploadCsvButton">Upload CSV</button>
+  </div>
+
+  <script>
+    // Load contacts from localStorage or initialize an empty array
+    const storedContacts = localStorage.getItem('contacts');
+    const contacts = storedContacts ? JSON.parse(storedContacts) : [];
+
+    // Function to render the table
+    const tableBody = document.getElementById('contactsTableBody');
+    const renderTable = () => {
+      tableBody.innerHTML = contacts.map(contact => {
+        const details = contact.details.join(", ");
+        return `
+          <tr>
+            <td>${contact.name}</td>
+            <td>${contact.number}</td>
+            <td>${details}</td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    // Initial render of the table
+    renderTable();
+
+    // Handle form submission to add a new contact
+    const contactForm = document.getElementById('contactForm');
+    contactForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      // Get form values
+      const name = document.getElementById('name').value;
+      const number = document.getElementById('number').value;
+      const details = document.getElementById('details').value.split(',').map(item => item.trim());
+
+      // Create new contact object and add to the contacts array
+      const newContact = { name, number, details };
+      contacts.push(newContact);
+
+      // Save updated contacts to local storage
+      localStorage.setItem('contacts', JSON.stringify(contacts));
+
+      // Re-render the table with the new contact
+      renderTable();
+
+      // Clear the form fields
+      contactForm.reset();
+    });
+
+    // Function to download table data as CSV
+    const downloadCSV = () => {
+      // Prepare CSV headers and rows
+      const headers = ['Name', 'Number', 'Callback Details'];
+      const rows = contacts.map(contact => [
+        contact.name,
+        contact.number,
+        contact.details.join(', ')
+      ]);
+
+      // Combine headers and rows into CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // Create a Blob from CSV content
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+
+      // Create an invisible link to download the CSV file
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'contacts.csv';
+
+      // Trigger the download by simulating a click on the link
+      link.click();
+    };
+
+    // Add event listener to the "Download CSV" button
+    const downloadCsvButton = document.getElementById('downloadCsv');
+    downloadCsvButton.addEventListener('click', downloadCSV);
+
+    // Function to upload and parse CSV
+    const uploadCSV = () => {
+      const fileInput = document.getElementById('uploadCsv');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please select a CSV file to upload.");
+        return;
+      }
+
+      const reader = new FileReader();
+      
+      // Read the file and parse its content
+      reader.onload = function(event) {
+        const csvData = event.target.result;
+        const parsedData = parseCSV(csvData);
+
+        // Update contacts with the parsed data
+        contacts.length = 0; // Clear existing contacts
+        contacts.push(...parsedData); // Add the parsed data
+
+        // Save the updated contacts to local storage
+        localStorage.setItem('contacts', JSON.stringify(contacts));
+
+        // Re-render the table with the uploaded contacts
+        renderTable();
+      };
+
+      reader.readAsText(file);
+    };
+
+    // Function to parse CSV data
+    const parseCSV = (csvData) => {
+      const rows = csvData.split('\n').map(row => row.trim()).filter(row => row.length > 0);
+      const parsedContacts = rows.slice(1).map(row => {
+        const [name, number, ...details] = row.split(',').map(cell => cell.trim());
+        return {
+          name,
+          number,
+          details };
+      });
+      return parsedContacts;
+    };
+
+    // Add event listener to the "Upload CSV" button
+    const uploadCsvButton = document.getElementById('uploadCsvButton');
+    uploadCsvButton.addEventListener('click', uploadCSV);
+
+  </script>
+
+</body>
+</html>
