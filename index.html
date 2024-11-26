@@ -102,6 +102,19 @@
       background-color: #f1f1f1;
     }
 
+    /* Delete Icon Styling */
+    .delete-icon {
+      color: #f44336;
+      cursor: pointer;
+      font-size: 20px;
+      text-align: center;
+      padding: 5px;
+    }
+
+    .delete-icon:hover {
+      color: #d32f2f;
+    }
+
     /* Buttons Styling */
     .action-buttons {
       margin-top: 20px;
@@ -160,6 +173,7 @@
         <th>Name</th>
         <th>Number</th>
         <th>Callback Details</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="contactsTableBody">
@@ -183,13 +197,14 @@
     // Function to render the table
     const tableBody = document.getElementById('contactsTableBody');
     const renderTable = () => {
-      tableBody.innerHTML = contacts.map(contact => {
+      tableBody.innerHTML = contacts.map((contact, index) => {
         const details = contact.details.join(", ");
         return `
           <tr>
             <td>${contact.name}</td>
             <td>${contact.number}</td>
             <td>${details}</td>
+            <td><span class="delete-icon" data-index="${index}">&#10006;</span></td>
           </tr>
         `;
       }).join('');
@@ -220,6 +235,21 @@
 
       // Clear the form fields
       contactForm.reset();
+    });
+
+    // Function to delete a contact
+    const deleteContact = (index) => {
+      contacts.splice(index, 1); // Remove the contact from the array
+      localStorage.setItem('contacts', JSON.stringify(contacts)); // Update localStorage
+      renderTable(); // Re-render the table after deletion
+    };
+
+    // Event listener for delete icons
+    tableBody.addEventListener('click', (event) => {
+      if (event.target.classList.contains('delete-icon')) {
+        const index = event.target.getAttribute('data-index');
+        deleteContact(index);
+      }
     });
 
     // Function to download table data as CSV
