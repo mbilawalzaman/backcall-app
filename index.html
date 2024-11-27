@@ -111,23 +111,23 @@
       padding: 5px;
     }
 
-     .delete-icon:hover {
-    color: #d32f2f;
-    cursor: pointer; /* Ensures cursor is a pointer */
-  }
-   .edit-icon {
-    color: #4CAF50;
-    cursor: pointer;
-    font-size: 20px;
-    text-align: center;
-    padding: 5px;
-  }
+    .delete-icon:hover {
+      color: #d32f2f;
+      cursor: pointer; /* Ensures cursor is a pointer */
+    }
 
-  .edit-icon:hover {
-    color: #388E3C;
-    cursor: pointer; /* Ensures cursor is a pointer */
-  }
+    .edit-icon {
+      color: #4CAF50;
+      cursor: pointer;
+      font-size: 20px;
+      text-align: center;
+      padding: 5px;
+    }
 
+    .edit-icon:hover {
+      color: #388E3C;
+      cursor: pointer; /* Ensures cursor is a pointer */
+    }
 
     /* Buttons Styling */
     .action-buttons {
@@ -174,6 +174,9 @@
     
     <label for="details">Details (Comma-separated):</label>
     <input type="text" id="details" required><br>
+
+    <label for="reminder">Reminder Date & Time:</label>
+    <input type="datetime-local" id="reminder" required><br>
     
     <button type="submit">Add Contact</button>
   </form>
@@ -187,6 +190,7 @@
         <th>Name</th>
         <th>Number</th>
         <th>Callback Details</th>
+        <th>Reminder</th>
         <th>Action</th>
       </tr>
     </thead>
@@ -203,7 +207,27 @@
     <button id="uploadCsvButton">Upload CSV</button>
   </div>
 
- <script>
+<script>
+  // Check if the Page Visibility API is supported
+  const isPageVisible = () => {
+    console.log("Page visibility state:", document.visibilityState); // Debugging log
+    return document.visibilityState === 'visible';
+  };
+
+  // Check if Notifications API is supported
+  const isNotificationSupported = "Notification" in window;
+
+  // Request notification permission from the user
+  if (isNotificationSupported && Notification.permission !== "granted") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        console.log("Notification permission granted.");
+      } else {
+        console.log("Notification permission denied.");
+      }
+    });
+  }
+
   // Load contacts from localStorage or initialize an empty array
   const storedContacts = localStorage.getItem('contacts');
   const contacts = storedContacts ? JSON.parse(storedContacts) : [];
@@ -213,11 +237,13 @@
   const renderTable = () => {
     tableBody.innerHTML = contacts.map((contact, index) => {
       const details = contact.details.join(", ");
+      const reminder = contact.reminder ? new Date(contact.reminder).toLocaleString() : "No reminder set";
       return `
         <tr data-index="${index}">
           <td>${contact.name}</td>
           <td>${contact.number}</td>
           <td>${details}</td>
+          <td>${reminder}</td>
           <td><span class="delete-icon" data-index="${index}">&#10006;</span> | <span class="edit-icon" data-index="${index}">&#9998;</span></td>
         </tr>
       `;
@@ -238,16 +264,18 @@
     const name = document.getElementById('name').value;
     const number = document.getElementById('number').value;
     const details = document.getElementById('details').value.split(',').map(item => item.trim());
+    const reminder = document.getElementById('reminder').value;
 
     if (editIndex === -1) {
       // Add new contact
-      const newContact = { name, number, details };
+      const newContact = { name, number, details, reminder };
       contacts.push(newContact);
     } else {
       // Update existing contact
       contacts[editIndex].name = name;
       contacts[editIndex].number = number;
       contacts[editIndex].details = details;
+      contacts[editIndex].reminder = reminder;
 
       // Show success alert for update
       alert("Number updated successfully");
@@ -274,98 +302,112 @@
     renderTable(); // Re-render the table after deletion
   };
 
-  // Function to handle edit contact
+  // Function to handle editing a contact
   const editContact = (index) => {
     const contact = contacts[index];
-
-    // Populate the form with the contact's data
     document.getElementById('name').value = contact.name;
     document.getElementById('number').value = contact.number;
     document.getElementById('details').value = contact.details.join(', ');
-
-    // Change the button text to "Update Contact" and store the edit index
-    contactForm.querySelector('button').textContent = 'Update Contact';
-    editIndex = index;
+    document.getElementById('reminder').value = contact.reminder || '';
+    editIndex = index; // Set the edit mode for this contact
+    document.querySelector('button[type="submit"]').textContent = 'Update Contact'; // Change button text to "Update"
   };
 
-  // Event listener for delete icons
+  // Event listener for delete and edit actions
   tableBody.addEventListener('click', (event) => {
+    const index = event.target.getAttribute('data-index');
     if (event.target.classList.contains('delete-icon')) {
-      const index = event.target.getAttribute('data-index');
-      deleteContact(index);
+      if (confirm("Are you sure you want to delete this contact?")) {
+        deleteContact(index);
+      }
     } else if (event.target.classList.contains('edit-icon')) {
-      const index = event.target.getAttribute('data-index');
       editContact(index);
     }
   });
 
-  // Function to download table data as CSV
-  const downloadCSV = () => {
-    const headers = ['Name', 'Number', 'Callback Details'];
-    const rows = contacts.map(contact => [
-      contact.name,
-      contact.number,
-      contact.details.join(', ')
-    ]);
+  // Function to check reminders every 3 seconds
+ const checkReminders = () => {
+  const now = new Date();
+  console.log("Current time:", now);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+  contacts.forEach(contact => {
+    if (contact.reminder) {
+      const reminderTime = new Date(contact.reminder);
+      console.log("Reminder time for", contact.name, ":", reminderTime);
+
+      if (now >= reminderTime) {
+        console.log("Reminder triggered for", contact.name);
+
+        if (!isPageVisible()) {
+          // The page is in the background, show a notification
+          if (isNotificationSupported && Notification.permission === "granted") {
+            new Notification(`Reminder for ${contact.name}`, {
+              body: `Reminder: ${contact.details.join(", ")}`,
+            });
+          }
+        } else {
+          // The page is visible, show an alert
+          alert(`Reminder for ${contact.name}: ${contact.details.join(", ")}`);
+        }
+        
+        // Remove the reminder after showing it
+        contact.reminder = null;
+      }
+    }
+  });
+
+  // Save the updated contacts (with no reminders) back to local storage
+  localStorage.setItem('contacts', JSON.stringify(contacts));
+};
+
+// Check reminders every 30 seconds
+setInterval(checkReminders, 30000);
+
+
+  // Check reminders every 3 seconds
+  setInterval(checkReminders, 3000);
+
+  // Download contacts as CSV
+  document.getElementById('downloadCsv').addEventListener('click', () => {
+    let csvContent = "Name,Number,Details,Reminder\n";
+    contacts.forEach(contact => {
+      csvContent += `${contact.name},${contact.number},${contact.details.join(", ")},${contact.reminder || "No reminder"}\n`;
+    });
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'contacts.csv';
     link.click();
-  };
+  });
 
-  // Event listener for downloading CSV
-  document.getElementById('downloadCsv').addEventListener('click', downloadCSV);
+  // Upload contacts from CSV file
+  document.getElementById('uploadCsv').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const content = e.target.result;
+        const rows = content.split('\n').map(row => row.split(','));
+        rows.forEach((row, index) => {
+          if (index > 0 && row.length >= 4) { // Skip header row
+            const [name, number, details, reminder] = row;
+            const contact = {
+              name,
+              number,
+              details: details.split(' ').map(item => item.trim()), // Clean up spaces in details
+              reminder: reminder !== "No reminder" ? reminder : null,
+            };
+            contacts.push(contact);
+          }
+        });
 
-  // Handle CSV upload
-  const uploadCSV = () => {
-    const fileInput = document.getElementById('uploadCsv');
-    const file = fileInput.files[0];
-
-    if (!file) {
-      alert("Please select a CSV file to upload.");
-      return;
+        localStorage.setItem('contacts', JSON.stringify(contacts)); // Save to local storage
+        renderTable(); // Re-render the table with new data
+      };
+      reader.readAsText(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      const csvData = event.target.result;
-      const parsedData = parseCSV(csvData);
-
-      // Replace current contacts with the parsed data from CSV
-      contacts.length = 0; // Clear existing contacts
-      contacts.push(...parsedData); // Add parsed contacts to the array
-
-      // Save the updated contacts to localStorage
-      localStorage.setItem('contacts', JSON.stringify(contacts));
-
-      // Re-render the table with the uploaded contacts
-      renderTable();
-    };
-
-    reader.readAsText(file);
-     fileInput.value = '';
-     alert("File uploaded successfully.");
-  };
-
-  // Helper function to parse CSV data
-  const parseCSV = (csvData) => {
-    const rows = csvData.split('\n').map(row => row.trim()).filter(row => row.length > 0);
-    return rows.slice(1).map(row => {
-      const [name, number, ...details] = row.split(',').map(cell => cell.trim());
-      return { name, number, details };
-    });
-  };
-
-  // Add event listener to the "Upload CSV" button
-  const uploadCsvButton = document.getElementById('uploadCsvButton');
-  uploadCsvButton.addEventListener('click', uploadCSV);
+  });
 </script>
 
 </body>
