@@ -420,19 +420,25 @@ const checkReminders = () => {
         // Combine the formatted date and time
         const formattedReminder = `${formattedDate} at ${formattedTime}`;
 
-        // If page is not focused, show notification
-        if (!isPageVisible()) {
-          if (isNotificationSupported && Notification.permission === "granted") {
-            new Notification(`Reminder for ${contact.name}`, {
-              body: `Reminder: ${contact.details.join(", ")}`,
-              icon: 'https://example.com/your-icon.png' // Optional: add an icon for the notification
-            });
-          }
-        } else {
-          // The page is focused, show an alert with formatted reminder date and time
-          alert(`Reminder for \nName: ${contact.name} \nNumber: ${contact.number} \nReminder set for: ${formattedReminder}`);
-
-        }
+       if (!isPageVisible()) {
+  if (isNotificationSupported && Notification.permission === "granted") {
+    // Format reminder message similar to alert
+    const reminderMessage = `
+      Name: ${contact.name}
+      Number: ${contact.number}
+      Reminder set for: ${formattedReminder}
+    `;
+    
+    // Show notification with structured information
+    new Notification(`Reminder for ${contact.name}`, {
+      body: reminderMessage, // Display the formatted reminder message
+      icon: 'https://example.com/your-icon.png' // Optional: add an icon for the notification
+    });
+  }
+} else {
+  // The page is focused, show an alert with formatted reminder date and time
+  alert(`Reminder for \nName: ${contact.name} \nNumber: ${contact.number} \nReminder set for: ${formattedReminder}`);
+}
 
         // Remove the reminder after showing it
         contact.reminder = null;
