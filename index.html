@@ -320,11 +320,12 @@ if (isNotificationSupported && Notification.permission !== "granted") {
   });
 }
 
-// Function to check reminders every 3 seconds
+
 const checkReminders = () => {
   const now = new Date();
 
   contacts.forEach(contact => {
+    console.log(contact);
     if (contact.reminder) {
       // Convert the reminder to a Date object
       const reminderTime = new Date(contact.reminder);
@@ -337,6 +338,25 @@ const checkReminders = () => {
 
       // If the reminder time has passed, trigger the reminder
       if (now >= reminderTime) {
+        
+        // Format the reminder date to display the day (e.g., "Monday, November 27, 2024")
+        const formattedDate = reminderTime.toLocaleDateString('en-US', {
+          weekday: 'long',  // Day of the week (e.g., "Monday")
+          year: 'numeric',  // Full year (e.g., "2024")
+          month: 'long',    // Full month name (e.g., "November")
+          day: 'numeric'    // Day of the month (e.g., "27")
+        });
+
+        // Format the reminder time to show hours and minutes with AM/PM (e.g., "10:53:00 AM")
+        const formattedTime = reminderTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',  // Two-digit hour (e.g., "10")
+          minute: '2-digit', // Two-digit minute (e.g., "53")
+          second: '2-digit', // Two-digit second (e.g., "00")
+          hour12: true       // Use 12-hour format (AM/PM)
+        });
+
+        // Combine the formatted date and time
+        const formattedReminder = `${formattedDate} at ${formattedTime}`;
 
         // If page is not focused, show notification
         if (!isPageVisible()) {
@@ -347,8 +367,8 @@ const checkReminders = () => {
             });
           }
         } else {
-          // The page is focused, show an alert (or other UI elements)
-          alert(`Reminder for ${contact.name}: ${contact.details.join(", ")}`);
+          // The page is focused, show an alert with formatted reminder date and time
+          alert(`Reminder for \nName: ${contact.name} \nNumber: ${contact.number} \nReminder set for: ${formattedReminder}`);
         }
 
         // Remove the reminder after showing it
@@ -360,6 +380,8 @@ const checkReminders = () => {
   // Save the updated contacts (with no reminders) back to local storage
   localStorage.setItem('contacts', JSON.stringify(contacts));
 };
+
+
 
 
 
