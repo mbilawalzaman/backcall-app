@@ -210,23 +210,9 @@
 <script>
   // Check if the Page Visibility API is supported
   const isPageVisible = () => {
-    console.log("Page visibility state:", document.visibilityState); // Debugging log
     return document.visibilityState === 'visible';
   };
 
-  // Check if Notifications API is supported
-  const isNotificationSupported = "Notification" in window;
-
-  // Request notification permission from the user
-  if (isNotificationSupported && Notification.permission !== "granted") {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        console.log("Notification permission granted.");
-      } else {
-        console.log("Notification permission denied.");
-      }
-    });
-  }
 
   // Load contacts from localStorage or initialize an empty array
   const storedContacts = localStorage.getItem('contacts');
@@ -325,31 +311,47 @@
     }
   });
 
-  // Function to check reminders every 3 seconds
- const checkReminders = () => {
+// Check if Notifications API is supported
+const isNotificationSupported = "Notification" in window;
+
+// Request notification permission if not already granted
+if (isNotificationSupported && Notification.permission !== "granted") {
+  Notification.requestPermission().then(permission => {
+  });
+}
+
+// Function to check reminders every 3 seconds
+const checkReminders = () => {
   const now = new Date();
-  console.log("Current time:", now);
+
 
   contacts.forEach(contact => {
     if (contact.reminder) {
       const reminderTime = new Date(contact.reminder);
-      console.log("Reminder time for", contact.name, ":", reminderTime);
+    
 
+      // Check if reminderTime is a valid date
+      if (isNaN(reminderTime)) {
+        console.error(`Invalid reminder date for ${contact.name}:`, contact.reminder);
+        return; // Skip this contact if the reminder is invalid
+      }
+
+      // If the reminder time has passed, trigger the reminder
       if (now >= reminderTime) {
-        console.log("Reminder triggered for", contact.name);
 
+        // If page is not focused, show notification
         if (!isPageVisible()) {
-          // The page is in the background, show a notification
           if (isNotificationSupported && Notification.permission === "granted") {
             new Notification(`Reminder for ${contact.name}`, {
               body: `Reminder: ${contact.details.join(", ")}`,
+              icon: 'https://example.com/your-icon.png' // Optional: add an icon for the notification
             });
           }
         } else {
-          // The page is visible, show an alert
+          // The page is focused, show an alert (or other UI elements)
           alert(`Reminder for ${contact.name}: ${contact.details.join(", ")}`);
         }
-        
+
         // Remove the reminder after showing it
         contact.reminder = null;
       }
@@ -360,8 +362,6 @@
   localStorage.setItem('contacts', JSON.stringify(contacts));
 };
 
-// Check reminders every 30 seconds
-setInterval(checkReminders, 30000);
 
 
   // Check reminders every 3 seconds
